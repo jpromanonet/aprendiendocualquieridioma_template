@@ -406,6 +406,58 @@ function page_certificates(): void
     ]);
 }
 
+function page_certificate_level(int $levelId): void
+{
+    $user = current_user();
+    if (!$user) {
+        redirect('cuenta');
+    }
+    maybe_certificate((int) $user['id'], $levelId);
+    $stmt = db()->prepare('SELECT c.*, l.title FROM certificates c JOIN levels l ON l.id = c.level_id WHERE c.user_id = ? AND c.level_id = ?');
+    $stmt->execute([(int) $user['id'], $levelId]);
+    $cert = $stmt->fetch();
+    if (!$cert) {
+        redirect('certificados');
+    }
+    $pdf = certificate_pdf([
+        'kicker' => 'APRENDIENDO MANDARÍN',
+        'title' => 'Certificado',
+        'subtitle' => 'Nivel ' . $cert['title'],
+        'lead' => 'Se deja constancia de que',
+        'name' => (string) $user['display_name'],
+        'body' => 'completó todas las clases del nivel ' . $cert['title'] . ' en este curso.',
+        'code' => (string) $cert['code'],
+        'date' => fecha_es((string) $cert['issued_at']),
+    ]);
+    send_certificate_pdf('Certificado-' . $cert['title'] . '.pdf', $pdf);
+}
+
+function page_certificate_final(): void
+{
+    $user = current_user();
+    if (!$user) {
+        redirect('cuenta');
+    }
+    maybe_final_certificate((int) $user['id']);
+    $stmt = db()->prepare('SELECT * FROM course_certificates WHERE user_id = ?');
+    $stmt->execute([(int) $user['id']]);
+    $cert = $stmt->fetch();
+    if (!$cert) {
+        redirect('certificados');
+    }
+    $pdf = certificate_pdf([
+        'kicker' => 'APRENDIENDO MANDARÍN',
+        'title' => 'Certificado final',
+        'subtitle' => 'Curso completo',
+        'lead' => 'Se deja constancia de que',
+        'name' => (string) $user['display_name'],
+        'body' => 'completó los nueve niveles del HSK en este curso.',
+        'code' => (string) $cert['code'],
+        'date' => fecha_es((string) $cert['issued_at']),
+    ]);
+    send_certificate_pdf('Certificado-curso.pdf', $pdf);
+}
+
 function page_account(): void
 {
     $user = current_user();
